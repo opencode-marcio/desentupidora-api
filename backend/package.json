@@ -1,0 +1,32 @@
+{
+  "name": "desentupidora-api",
+  "version": "1.0.0",
+  "description": "API para app de desentupidoras - comprovacao de servico",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "npx nodemon src/index.js",
+    "test": "npx jest --runInBand --forceExit --detectOpenHandles",
+    "test:watch": "npx jest --watch --runInBand --forceExit --detectOpenHandles",
+    "pretest": "if exist data\\database.sqlite del /q data\\database.sqlite"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "pdfkit": "^0.15.0",
+    "pg": "^8.13.0",
+    "pg-hstore": "^2.3.4",
+    "sequelize": "^6.37.3",
+    "sharp": "^0.33.5",
+    "sqlite3": "^6.0.1"
+  },
+  "devDependencies": {
+    "jest": "^30.4.2",
+    "nodemon": "^3.1.4",
+    "supertest": "^7.2.2"
+  }
+}
