@@ -163,13 +163,18 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       final autoSave = prefs.getBool('auto_save_pdf') ?? true;
       if (autoSave) {
         final pdfBytes = await ApiService.downloadPdf(widget.orderId);
-        final dir = await getExternalStorageDirectory();
-        final file = File('${dir!.path}/relatorio_${widget.orderId}.pdf');
+        Directory? dir;
+        if (Platform.isAndroid) {
+          dir = Directory('/storage/emulated/0/Download');
+          if (!await dir.exists()) dir = null;
+        }
+        dir ??= await getApplicationDocumentsDirectory();
+        final file = File('${dir.path}/relatorio_${widget.orderId}.pdf');
         await file.writeAsBytes(pdfBytes);
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Row(children: [Icon(Icons.save_alt, color: Colors.white), SizedBox(width: 8), Text('PDF salvo no dispositivo')]),
+            content: Row(children: [Icon(Icons.save_alt, color: Colors.white), SizedBox(width: 8), Text('PDF salvo em ${dir.path.replaceAll('/storage/emulated/0', '')}')]),
             backgroundColor: Colors.blue,
           ));
         }
