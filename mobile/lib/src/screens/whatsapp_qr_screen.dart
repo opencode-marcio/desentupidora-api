@@ -21,6 +21,14 @@ class _WhatsAppQRScreenState extends State<WhatsAppQRScreen> {
     _checkStatus();
   }
 
+  Timer? _pollTimer;
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
+  }
+
   Future<void> _checkStatus() async {
     setState(() => _loading = true);
     try {
@@ -39,37 +47,67 @@ class _WhatsAppQRScreenState extends State<WhatsAppQRScreen> {
             ),
           );
         }
+        setState(() => _loading = false);
       } else {
-        await _fetchQR();
+        await ApiService.startWhatsApp();
+        await Future.delayed(const Duration(seconds: 2));
+        _pollQR();
       }
     } catch (e) {
       setState(() => _status = 'erro');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro: $e'), backgroundColor: Colors.red));
       }
+      setState(() => _loading = false);
     }
-    setState(() => _loading = false);
   }
 
-  Future<void> _fetchQR() async {
-    try {
-      await ApiService.startWhatsApp();
-      await Future.delayed(const Duration(seconds: 1));
+  void _pollQR() {
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
+      try {
+        if (_status == 'connected') {
+          _pollTimer?.cancel();
+          return;
+        }
 
-      final result = await ApiService.getWhatsAppQR();
-      setState(() {
-        _qr = result['qr'];
-        _status = result['status'] ?? 'awaiting_scan';
-      });
+        final result = await ApiService.getWhatsAppQR();
+        if (!mounted) return;
 
-      if (_qr == null && _status != 'connected') {
-        Future.delayed(const Duration(seconds: 3), _fetchQR);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro ao obter QR: $e')));
-      }
-    }
+        if (result['qr'] != null) {
+          _pollTimer?.cancel();
+          setState(() {
+            _qr = result['qr'];
+            _status = 'awaiting_scan';
+            _loading = false;
+          });
+          _pollConnection();
+        } else if (result['status'] == 'connected') {
+          _pollTimer?.cancel();
+          setState(() {
+            _qr = null;
+            _status = 'connected';
+            _loading = false;
+          });
+        }
+      } catch (_) {}
+    });
+  }
+
+  void _pollConnection() {
+    Timer.periodic(const Duration(seconds: 3), (_) async {
+      try {
+        final status = await ApiService.getWhatsAppStatus();
+        if (!mounted) return;
+        if (status['status'] == 'connected') {
+          _pollTimer?.cancel();
+          setState(() {
+            _status = 'connected';
+            _qr = null;
+          });
+        }
+      } catch (_) {}
+    });
   }
 
   Future<void> _refresh() async {
