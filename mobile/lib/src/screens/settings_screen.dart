@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import '../services/api_config.dart';
 import '../services/api_service.dart';
 import 'edit_profile_screen.dart';
+import 'whatsapp_qr_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -210,6 +211,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         ),
                       ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.message, color: Color(0xFF25D366)),
+                    title: const Text('WhatsApp'),
+                    subtitle: const Text('Conectar numero central para envio de relatorios'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const WhatsAppQRScreen()),
                     ),
                   ),
                 ),

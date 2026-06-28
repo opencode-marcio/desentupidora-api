@@ -6,11 +6,13 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "npx nodemon src/index.js",
-    "test": "npx jest --runInBand --forceExit --detectOpenHandles",
-    "test:watch": "npx jest --watch --runInBand --forceExit --detectOpenHandles",
+    "test": "set WHATSAPP_AUTO_START=false && npx jest --runInBand --forceExit --detectOpenHandles",
+    "test:watch": "set WHATSAPP_AUTO_START=false && npx jest --watch --runInBand --forceExit --detectOpenHandles",
     "pretest": "if exist data\\database.sqlite del /q data\\database.sqlite"
   },
   "dependencies": {
+    "@hapi/boom": "^9.1.4",
+    "@whiskeysockets/baileys": "^6.7.23",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -20,6 +22,8 @@
     "pdfkit": "^0.15.0",
     "pg": "^8.13.0",
     "pg-hstore": "^2.3.4",
+    "pino": "^8.21.0",
+    "qrcode": "^1.5.4",
     "sequelize": "^6.37.3",
     "sharp": "^0.33.5",
     "sqlite3": "^6.0.1"

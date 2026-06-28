@@ -15,6 +15,25 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passCtrl = TextEditingController();
   bool _loading = false;
   bool _showPass = false;
+  bool _remember = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedCredentials();
+  }
+
+  Future<void> _loadSavedCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedEmail = prefs.getString('saved_email') ?? '';
+    final savedPass = prefs.getString('saved_password') ?? '';
+    if (savedEmail.isNotEmpty) {
+      _emailCtrl.text = savedEmail;
+      if (savedPass.isNotEmpty) {
+        _passCtrl.text = savedPass;
+      }
+    }
+  }
 
   Future<void> _login() async {
     setState(() => _loading = true);
@@ -26,6 +45,13 @@ class _LoginScreenState extends State<LoginScreen> {
         await prefs.setInt('userId', res['user']['id']);
         await prefs.setString('userName', res['user']['name']);
         await prefs.setString('userRole', res['user']['role'] ?? 'technician');
+        if (_remember) {
+          await prefs.setString('saved_email', _emailCtrl.text);
+          await prefs.setString('saved_password', _passCtrl.text);
+        } else {
+          await prefs.remove('saved_email');
+          await prefs.remove('saved_password');
+        }
         if (mounted) Navigator.pushReplacementNamed(context, '/home');
       } else {
         _showError(res['error'] ?? 'Erro ao fazer login');
@@ -98,7 +124,20 @@ class _LoginScreenState extends State<LoginScreen> {
                 TextField(controller: _emailCtrl, decoration: const InputDecoration(labelText: 'Email', border: const OutlineInputBorder()), keyboardType: TextInputType.emailAddress),
                 const SizedBox(height: 16),
                 TextField(controller: _passCtrl, obscureText: !_showPass, decoration: InputDecoration(labelText: 'Senha', border: const OutlineInputBorder(), suffixIcon: IconButton(icon: Icon(_showPass ? Icons.visibility_off : Icons.visibility), onPressed: () => setState(() => _showPass = !_showPass)))),
-                const SizedBox(height: 24),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Checkbox(
+                      value: _remember,
+                      onChanged: (v) => setState(() => _remember = v ?? true),
+                    ),
+                    GestureDetector(
+                      onTap: () => setState(() => _remember = !_remember),
+                      child: const Text('Lembrar dados'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
                 SizedBox(width: double.infinity, height: 48, child: ElevatedButton(onPressed: _loading ? null : _login, child: _loading ? const CircularProgressIndicator() : const Text('Entrar'))),
                 const SizedBox(height: 16),
                 TextButton(onPressed: () => Navigator.pushNamed(context, '/register'), child: const Text('Criar conta')),

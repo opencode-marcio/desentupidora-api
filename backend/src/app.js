@@ -9,6 +9,8 @@ const serviceOrderRoutes = require('./routes/serviceOrders');
 const photoRoutes = require('./routes/photos');
 const reportRoutes = require('./routes/reports');
 const companyRoutes = require('./routes/companies');
+const whatsappRoutes = require('./routes/whatsapp');
+const wa = require('./whatsapp');
 
 const app = express();
 
@@ -25,6 +27,7 @@ app.use('/api/orders', serviceOrderRoutes);
 app.use('/api/photos', photoRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/companies', companyRoutes);
+app.use('/api/whatsapp', whatsappRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'desentupidora-api' });
@@ -132,6 +135,10 @@ app.get('/r/:token', async (req, res) => {
 async function initDb(options = {}) {
   await sequelize.authenticate();
   await sequelize.sync(options);
+
+  if (process.env.WHATSAPP_AUTO_START !== 'false') {
+    wa.start().catch(() => {});
+  }
 }
 
 module.exports = { app, initDb };

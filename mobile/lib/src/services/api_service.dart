@@ -200,6 +200,21 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> completeAndSend(int orderId, {String? clientSignature}) async {
+    final res = await _client.post(
+      Uri.parse('$_apiUrl/orders/$orderId/complete-and-send'),
+      headers: await _headers(),
+      body: jsonEncode({
+        if (clientSignature != null) 'clientSignature': clientSignature,
+      }),
+    );
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body);
+    }
+    final msg = res.body.isNotEmpty ? jsonDecode(res.body)['error'] : 'Erro ao concluir';
+    throw Exception(msg ?? 'Erro ao concluir');
+  }
+
   static Future<Map<String, dynamic>> shareReport(int orderId) async {
     final res = await _client.post(
       Uri.parse('$_apiUrl/reports/$orderId/share'),
@@ -245,6 +260,48 @@ class ApiService {
       return jsonDecode(body);
     }
     throw Exception('Erro ao carregar empresa');
+  }
+
+  static Future<Map<String, dynamic>> getWhatsAppStatus() async {
+    final res = await _client.get(
+      Uri.parse('$_apiUrl/whatsapp/status'),
+      headers: await _headers(),
+    );
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body);
+    }
+    throw Exception('Erro ao verificar status WhatsApp');
+  }
+
+  static Future<Map<String, dynamic>> getWhatsAppQR() async {
+    final res = await _client.get(
+      Uri.parse('$_apiUrl/whatsapp/qr'),
+      headers: await _headers(),
+    );
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body);
+    }
+    throw Exception(jsonDecode(res.body)['error'] ?? 'Erro ao obter QR code');
+  }
+
+  static Future<void> startWhatsApp() async {
+    final res = await _client.post(
+      Uri.parse('$_apiUrl/whatsapp/start'),
+      headers: await _headers(),
+    );
+    if (res.statusCode != 200) {
+      throw Exception(jsonDecode(res.body)['error'] ?? 'Erro ao iniciar WhatsApp');
+    }
+  }
+
+  static Future<void> logoutWhatsApp() async {
+    final res = await _client.post(
+      Uri.parse('$_apiUrl/whatsapp/logout'),
+      headers: await _headers(),
+    );
+    if (res.statusCode != 200) {
+      throw Exception(jsonDecode(res.body)['error'] ?? 'Erro ao desconectar WhatsApp');
+    }
   }
 
   static Future<Map<String, dynamic>> uploadLogo(File file) async {

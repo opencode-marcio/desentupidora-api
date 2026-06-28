@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:intl/intl.dart';
@@ -113,24 +113,38 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     setState(() => _updatingStatus = false);
   }
 
-  Future<void> _completeOrder() async {
+  Future<void> _completeAndSend() async {
     final signature = await Navigator.push<String>(
       context,
       MaterialPageRoute(builder: (_) => const SignatureScreen()),
     );
 
+    if (signature == null) return;
+
     setState(() => _updatingStatus = true);
     try {
-      final data = <String, dynamic>{'status': 'completed'};
-      if (signature != null) {
-        data['clientSignature'] = signature;
-      }
-      await ApiService.updateOrder(widget.orderId, data);
+      final result = await ApiService.completeAndSend(widget.orderId, clientSignature: signature);
       await _loadOrder();
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Row(children: [Icon(Icons.check_circle, color: Colors.white), SizedBox(width: 8), Text('Servico concluido!')]),
-        backgroundColor: Colors.green,
-      ));
+      if (mounted) {
+        final sendMethod = result['sendMethod'] as String?;
+        final message = result['message'] as String? ?? 'Relatorio concluido!';
+
+        IconData icon;
+        Color color;
+        if (sendMethod == 'whatsapp_interno' || sendMethod == 'webhook' || sendMethod == 'falha_whatsapp_webhook_ok') {
+          icon = Icons.check_circle;
+          color = Colors.green;
+        } else {
+          icon = Icons.warning_amber;
+          color = Colors.orange;
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Row(children: [Icon(icon, color: Colors.white), SizedBox(width: 8), Expanded(child: Text(message))]),
+          backgroundColor: color,
+          duration: const Duration(seconds: 4),
+        ));
+      }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro: $e')));
     }
@@ -173,17 +187,17 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     }
   }
 
-  Future<void> _sharePdf() async {
+  Future<void> _savePdf() async {
     try {
       final pdfBytes = await ApiService.downloadPdf(widget.orderId);
-      final dir = Directory.systemTemp;
-      final file = File('${dir.path}/relatorio_${widget.orderId}.pdf');
+      final dir = await getExternalStorageDirectory();
+      final file = File('${dir!.path}/relatorio_${widget.orderId}.pdf');
       await file.writeAsBytes(pdfBytes);
 
-      await Share.shareXFiles(
-        [XFile(file.path)],
-        text: 'Relatorio de servico #${widget.orderId}',
-      );
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: const Row(children: [Icon(Icons.check_circle, color: Colors.white), SizedBox(width: 8), Text('PDF salvo na pasta Downloads')]),
+        backgroundColor: Colors.green,
+      ));
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro: $e')));
     }
@@ -369,30 +383,21 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   if (order.status == 'in_progress')
                     SizedBox(width: double.infinity, child: ElevatedButton.icon(
                       icon: _updatingStatus ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.check_circle),
-                      onPressed: _updatingStatus ? null : _completeOrder,
-                      label: const Text('Concluir Servico'),
+                      onPressed: _updatingStatus ? null : _completeAndSend,
+                      label: const Text('Concluir e Enviar Relatorio'),
                       style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
                     )),
                 ],
               ],
-              const SizedBox(height: 16),
-              SizedBox(width: double.infinity, child: ElevatedButton.icon(
-                icon: const Icon(Icons.send),
-                onPressed: _sendToClient,
-                label: const Text('Enviar para o Cliente'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF25D366),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-              )),
-              const SizedBox(height: 8),
-              SizedBox(width: double.infinity, child: ElevatedButton.icon(
-                icon: const Icon(Icons.picture_as_pdf),
-                onPressed: _sharePdf,
-                label: const Text('Baixar PDF'),
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-              )),
+              if (order.status == 'completed') ...[
+                const SizedBox(height: 16),
+                SizedBox(width: double.infinity, child: ElevatedButton.icon(
+                  icon: const Icon(Icons.download),
+                  onPressed: _savePdf,
+                  label: const Text('Baixar PDF'),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
+                )),
+              ],
             ],
           ),
         ),

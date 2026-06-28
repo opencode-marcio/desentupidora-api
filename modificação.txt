@@ -1,0 +1,21 @@
+# TAREFA: UNIFICAÇÃO DO BOTÃO DE ENVIO (ENVIO AUTOMÁTICO DE PDF VIA WHATSAPP CENTRAL)
+
+# O CONTEXTO OPERACIONAL (Por que isso é inegociável):
+O aplicativo será instalado nos celulares pessoais dos funcionários em campo ou em aparelhos móveis rotativos da frota. Por causa disso, é ESTRITAMENTE PROIBIDO que o botão de envio tente abrir o aplicativo nativo do WhatsApp no celular de quem está usando o app. O cliente final não pode receber o laudo através de um número particular. Toda a comunicação deve sair obrigatoriamente do servidor / número central e oficial da empresa para manter o profissionalismo e o controle do histórico.
+
+# O PROBLEMA ATUAL:
+O processo hoje exige passos manuais. Há um botão para enviar texto e outro para baixar o PDF. Isso gera atrito e lentidão na rua para o técnico.
+
+# O QUE PRECISA SER FEITO (A Solução Exigida):
+Você deve criar um ÚNICO botão de ação (ex: "Concluir e Enviar Relatório").
+Ao clicar neste botão, o sistema deve executar o seguinte fluxo de forma 100% automática, em background (por trás dos panos) e invisível para o técnico:
+
+1. O sistema resgata o número de WhatsApp do cliente já preenchido na ordem de serviço.
+2. O sistema capta o arquivo PDF do laudo gerado.
+3. O sistema envia automaticamente para o WhatsApp do cliente:
+   - O arquivo PDF em anexo (como documento).
+   - Uma mensagem de texto padrão de acompanhamento junto com o arquivo.
+4. O disparo DEVE acontecer direto pela integração (API/Webhook) conectada ao número oficial da empresa.
+5. O celular do técnico NÃO PODE abrir nenhuma tela de WhatsApp e ele NÃO DEVE precisar baixar o PDF no aparelho. Após o clique, o botão deve apenas processar e mostrar um aviso de "Enviado com sucesso" na tela do aplicativo.
+
+Fica a seu exclusivo critério técnico definir qual integração, ferramenta ou lógica de webhook usar no backend para entregar essa funcionalidade. O requisito final de entrega é apenas este: 1 clique do técnico na rua = cliente recebe o PDF anexado pelo WhatsApp central da empresa.
