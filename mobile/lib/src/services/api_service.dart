@@ -200,9 +200,9 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> completeAndSend(int orderId, {String? clientSignature}) async {
+  static Future<Map<String, dynamic>> completeOrder(int orderId, {String? clientSignature}) async {
     final res = await _client.post(
-      Uri.parse('$_apiUrl/orders/$orderId/complete-and-send'),
+      Uri.parse('$_apiUrl/orders/$orderId/complete'),
       headers: await _headers(),
       body: jsonEncode({
         if (clientSignature != null) 'clientSignature': clientSignature,
@@ -213,6 +213,18 @@ class ApiService {
     }
     final msg = res.body.isNotEmpty ? jsonDecode(res.body)['error'] : 'Erro ao concluir';
     throw Exception(msg ?? 'Erro ao concluir');
+  }
+
+  static Future<Map<String, dynamic>> generateAndSend(int orderId) async {
+    final res = await _client.post(
+      Uri.parse('$_apiUrl/orders/$orderId/generate-and-send'),
+      headers: await _headers(),
+    );
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body);
+    }
+    final msg = res.body.isNotEmpty ? jsonDecode(res.body)['error'] : 'Erro ao gerar e enviar';
+    throw Exception(msg ?? 'Erro ao gerar e enviar');
   }
 
   static Future<Map<String, dynamic>> shareReport(int orderId) async {

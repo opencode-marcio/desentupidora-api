@@ -113,7 +113,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     setState(() => _updatingStatus = false);
   }
 
-  Future<void> _completeAndSend() async {
+  Future<void> _completeOrder() async {
     final signature = await Navigator.push<String>(
       context,
       MaterialPageRoute(builder: (_) => const SignatureScreen()),
@@ -123,26 +123,50 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
     setState(() => _updatingStatus = true);
     try {
-      final result = await ApiService.completeAndSend(widget.orderId, clientSignature: signature);
+      await ApiService.completeOrder(widget.orderId, clientSignature: signature);
       await _loadOrder();
       if (mounted) {
-        final sendMethod = result['sendMethod'] as String?;
-        final message = result['message'] as String? ?? 'Relatorio concluido!';
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Row(children: [Icon(Icons.check_circle, color: Colors.white), SizedBox(width: 8), Text('Ordem concluida!')]),
+          backgroundColor: Colors.green,
+        ));
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro: $e')));
+    }
+    setState(() => _updatingStatus = false);
+  }
 
-        IconData icon;
-        Color color;
-        if (sendMethod == 'whatsapp_interno' || sendMethod == 'webhook' || sendMethod == 'falha_whatsapp_webhook_ok') {
-          icon = Icons.check_circle;
-          color = Colors.green;
-        } else {
-          icon = Icons.warning_amber;
-          color = Colors.orange;
-        }
+  Future<void> _generateAndSend() async {
+    setState(() => _updatingStatus = true);
+    try {
+      final result = await ApiService.generateAndSend(widget.orderId);
+
+      if (mounted) {
+        final message = result['message'] as String? ?? 'Relatorio enviado!';
+        final sendMethod = result['sendMethod'] as String?;
+        final isSuccess = sendMethod == 'whatsapp_interno' || sendMethod == 'webhook' || sendMethod == 'falha_whatsapp_webhook_ok';
 
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Row(children: [Icon(icon, color: Colors.white), SizedBox(width: 8), Expanded(child: Text(message))]),
-          backgroundColor: color,
+          content: Row(children: [
+            Icon(isSuccess ? Icons.check_circle : Icons.warning_amber, color: Colors.white),
+            SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ]),
+          backgroundColor: isSuccess ? Colors.green : Colors.orange,
           duration: const Duration(seconds: 4),
+        ));
+      }
+
+      final pdfBytes = await ApiService.downloadPdf(widget.orderId);
+      final dir = await getExternalStorageDirectory();
+      final file = File('${dir!.path}/relatorio_${widget.orderId}.pdf');
+      await file.writeAsBytes(pdfBytes);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Row(children: [Icon(Icons.save_alt, color: Colors.white), SizedBox(width: 8), Text('PDF salvo no dispositivo')]),
+          backgroundColor: Colors.blue,
         ));
       }
     } catch (e) {
@@ -383,8 +407,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   if (order.status == 'in_progress')
                     SizedBox(width: double.infinity, child: ElevatedButton.icon(
                       icon: _updatingStatus ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.check_circle),
-                      onPressed: _updatingStatus ? null : _completeAndSend,
-                      label: const Text('Concluir e Enviar Relatorio'),
+                      onPressed: _updatingStatus ? null : _completeOrder,
+                      label: const Text('Concluir'),
                       style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
                     )),
                 ],
@@ -392,10 +416,17 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               if (order.status == 'completed') ...[
                 const SizedBox(height: 16),
                 SizedBox(width: double.infinity, child: ElevatedButton.icon(
+                  icon: _updatingStatus ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.send),
+                  onPressed: _updatingStatus ? null : _generateAndSend,
+                  label: const Text('Gerar Relatorio e Enviar'),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
+                )),
+                const SizedBox(height: 8),
+                SizedBox(width: double.infinity, child: ElevatedButton.icon(
                   icon: const Icon(Icons.download),
                   onPressed: _savePdf,
                   label: const Text('Baixar PDF'),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.grey, foregroundColor: Colors.white),
                 )),
               ],
             ],
