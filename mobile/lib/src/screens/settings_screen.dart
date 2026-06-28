@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_config.dart';
 import '../services/api_service.dart';
 import 'edit_profile_screen.dart';
@@ -21,6 +22,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _loading = true;
   bool _uploading = false;
   bool _savingComp = false;
+  bool _autoSavePdf = true;
   Map<String, dynamic>? _company;
   Map<String, dynamic>? _user;
 
@@ -35,6 +37,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    _autoSavePdf = prefs.getBool('auto_save_pdf') ?? true;
+
     final url = await ApiConfig.getBaseUrl();
     _urlCtrl.text = url;
     try {
@@ -225,6 +230,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       context,
                       MaterialPageRoute(builder: (_) => const WhatsAppQRScreen()),
                     ),
+                  ),
+                ),
+                Card(
+                  child: SwitchListTile(
+                    secondary: const Icon(Icons.save_alt),
+                    title: const Text('Salvar PDF automaticamente'),
+                    subtitle: const Text('Ao enviar relatorio, salvar PDF no celular'),
+                    value: _autoSavePdf,
+                    onChanged: (v) async {
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.setBool('auto_save_pdf', v);
+                      setState(() => _autoSavePdf = v);
+                    },
                   ),
                 ),
                 const SizedBox(height: 24),

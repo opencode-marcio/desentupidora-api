@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:intl/intl.dart';
@@ -158,16 +159,20 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         ));
       }
 
-      final pdfBytes = await ApiService.downloadPdf(widget.orderId);
-      final dir = await getExternalStorageDirectory();
-      final file = File('${dir!.path}/relatorio_${widget.orderId}.pdf');
-      await file.writeAsBytes(pdfBytes);
+      final prefs = await SharedPreferences.getInstance();
+      final autoSave = prefs.getBool('auto_save_pdf') ?? true;
+      if (autoSave) {
+        final pdfBytes = await ApiService.downloadPdf(widget.orderId);
+        final dir = await getExternalStorageDirectory();
+        final file = File('${dir!.path}/relatorio_${widget.orderId}.pdf');
+        await file.writeAsBytes(pdfBytes);
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Row(children: [Icon(Icons.save_alt, color: Colors.white), SizedBox(width: 8), Text('PDF salvo no dispositivo')]),
-          backgroundColor: Colors.blue,
-        ));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Row(children: [Icon(Icons.save_alt, color: Colors.white), SizedBox(width: 8), Text('PDF salvo no dispositivo')]),
+            backgroundColor: Colors.blue,
+          ));
+        }
       }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro: $e')));
@@ -208,22 +213,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro: $e')));
       }
-    }
-  }
-
-  Future<void> _savePdf() async {
-    try {
-      final pdfBytes = await ApiService.downloadPdf(widget.orderId);
-      final dir = await getExternalStorageDirectory();
-      final file = File('${dir!.path}/relatorio_${widget.orderId}.pdf');
-      await file.writeAsBytes(pdfBytes);
-
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: const Row(children: [Icon(Icons.check_circle, color: Colors.white), SizedBox(width: 8), Text('PDF salvo na pasta Downloads')]),
-        backgroundColor: Colors.green,
-      ));
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro: $e')));
     }
   }
 
@@ -420,13 +409,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   onPressed: _updatingStatus ? null : _generateAndSend,
                   label: const Text('Gerar Relatorio e Enviar'),
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
-                )),
-                const SizedBox(height: 8),
-                SizedBox(width: double.infinity, child: ElevatedButton.icon(
-                  icon: const Icon(Icons.download),
-                  onPressed: _savePdf,
-                  label: const Text('Baixar PDF'),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.grey, foregroundColor: Colors.white),
                 )),
               ],
             ],
