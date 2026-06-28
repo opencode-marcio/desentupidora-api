@@ -10,10 +10,6 @@ router.get('/status', async (req, res) => {
 });
 
 router.get('/qr', auth, async (req, res) => {
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({ error: 'Apenas administradores podem ver o QR code' });
-  }
-
   const qr = await wa.getQRCode();
   if (!qr) {
     const status = wa.getStatus();
@@ -23,17 +19,11 @@ router.get('/qr', auth, async (req, res) => {
 });
 
 router.post('/start', auth, async (req, res) => {
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({ error: 'Apenas administradores' });
-  }
   await wa.start();
   res.json({ message: 'WhatsApp iniciado' });
 });
 
 router.post('/logout', auth, async (req, res) => {
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({ error: 'Apenas administradores' });
-  }
   await wa.logout();
   res.json({ message: 'WhatsApp desconectado' });
 });

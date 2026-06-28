@@ -173,7 +173,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         await file.writeAsBytes(pdfBytes);
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Row(children: [Icon(Icons.save_alt, color: Colors.white), SizedBox(width: 8), Text('PDF salvo em ${dir.path.replaceAll('/storage/emulated/0', '')}')]),
             backgroundColor: Colors.blue,
           ));
