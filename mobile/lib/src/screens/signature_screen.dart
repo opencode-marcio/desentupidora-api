@@ -50,19 +50,7 @@ class _SignatureScreenState extends State<SignatureScreen> {
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
 
-    if (cropH > cropW) {
-      canvas.translate(0, cropW);
-      canvas.rotate(-pi / 2);
-      canvas.translate(-minX + pad, -minY + pad);
-    } else {
-      canvas.translate(-minX + pad, -minY + pad);
-    }
-
-    if (cropH > cropW) {
-      final tmp = cropW;
-      cropW = cropH;
-      cropH = tmp;
-    }
+    canvas.translate(-minX + pad, -minY + pad);
 
     final paint = Paint()
       ..color = Colors.black

@@ -142,9 +142,16 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   Future<void> _generateAndSend() async {
     setState(() => _updatingStatus = true);
     try {
+      final phone = _order?.clientPhone?.replaceAll(RegExp(r'[^\d]'), '') ?? '';
+      if (phone.isEmpty) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cliente sem telefone cadastrado')));
+        return;
+      }
+
+      // 1. Gera e salva o PDF
       final pdfBytes = await ApiService.downloadPdf(widget.orderId);
-      final dir = await getTemporaryDirectory();
-      final file = File('${dir.path}/relatorio_${widget.orderId}.pdf');
+      final extDir = await getExternalStorageDirectory();
+      final file = File('${extDir!.path}/relatorio_${widget.orderId}.pdf');
       await file.writeAsBytes(pdfBytes);
 
       final prefs = await SharedPreferences.getInstance();
@@ -154,20 +161,37 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         await file.copy('${saveDir.path}/relatorio_${widget.orderId}.pdf');
       }
 
-      final phone = _order?.clientPhone?.replaceAll(RegExp(r'[^\d]'), '') ?? '';
-      final msg = 'Ola! Segue o relatorio do servico realizado.\nCliente: ${_order?.clientName ?? ''}\nProtocolo: #${widget.orderId}';
+      final introKey = 'intro_sent_${widget.orderId}';
+      final introSent = prefs.getBool(introKey) ?? false;
 
-      await Share.shareXFiles(
-        [XFile(file.path)],
-        subject: 'Relatorio do servico #${widget.orderId}',
-        text: msg,
-      );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Row(children: [Icon(Icons.check_circle, color: Colors.white), SizedBox(width: 8), Text('Relatorio pronto para enviar!')]),
-          backgroundColor: Colors.green,
-        ));
+      if (!introSent) {
+        // 1o clique: abre conversa com mensagem
+        final msg = Uri.encodeComponent(
+          'Olá! Segue o relatório do serviço realizado.\nCliente: ${_order?.clientName ?? ''}\nProtocolo: #${widget.orderId}',
+        );
+        await launchUrl(
+          Uri.parse('whatsapp://send?phone=55$phone&text=$msg'),
+          mode: LaunchMode.externalApplication,
+        );
+        await prefs.setBool(introKey, true);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Mensagem enviada! Volte ao app e clique novamente para enviar o PDF.'),
+          ));
+        }
+      } else {
+        // 2o clique: compartilha o PDF (conversa ja existe, aparece como atalho)
+        await Share.shareXFiles(
+          [XFile(file.path)],
+          subject: 'Relatorio #${widget.orderId}',
+          text: 'Olá! Segue o relatório do serviço realizado.',
+        );
+        await prefs.remove(introKey);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('PDF pronto! Toque no contato do WhatsApp para enviar.'),
+          ));
+        }
       }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro: $e')));
