@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:intl/intl.dart';
@@ -141,43 +142,32 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   Future<void> _generateAndSend() async {
     setState(() => _updatingStatus = true);
     try {
-      final result = await ApiService.generateAndSend(widget.orderId);
-
-      if (mounted) {
-        final message = result['message'] as String? ?? 'Relatorio enviado!';
-        final sendMethod = result['sendMethod'] as String?;
-        final isSuccess = sendMethod == 'whatsapp_interno' || sendMethod == 'webhook' || sendMethod == 'falha_whatsapp_webhook_ok';
-
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Row(children: [
-            Icon(isSuccess ? Icons.check_circle : Icons.warning_amber, color: Colors.white),
-            SizedBox(width: 8),
-            Expanded(child: Text(message)),
-          ]),
-          backgroundColor: isSuccess ? Colors.green : Colors.orange,
-          duration: const Duration(seconds: 4),
-        ));
-      }
+      final pdfBytes = await ApiService.downloadPdf(widget.orderId);
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/relatorio_${widget.orderId}.pdf');
+      await file.writeAsBytes(pdfBytes);
 
       final prefs = await SharedPreferences.getInstance();
       final autoSave = prefs.getBool('auto_save_pdf') ?? true;
       if (autoSave) {
-        final pdfBytes = await ApiService.downloadPdf(widget.orderId);
-        Directory? dir;
-        if (Platform.isAndroid) {
-          dir = Directory('/storage/emulated/0/Download');
-          if (!await dir.exists()) dir = null;
-        }
-        dir ??= await getApplicationDocumentsDirectory();
-        final file = File('${dir.path}/relatorio_${widget.orderId}.pdf');
-        await file.writeAsBytes(pdfBytes);
+        final saveDir = await getApplicationDocumentsDirectory();
+        await file.copy('${saveDir.path}/relatorio_${widget.orderId}.pdf');
+      }
 
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Row(children: [Icon(Icons.save_alt, color: Colors.white), SizedBox(width: 8), Text('PDF salvo em ${dir.path.replaceAll('/storage/emulated/0', '')}')]),
-            backgroundColor: Colors.blue,
-          ));
-        }
+      final phone = _order?.clientPhone?.replaceAll(RegExp(r'[^\d]'), '') ?? '';
+      final msg = 'Ola! Segue o relatorio do servico realizado.\nCliente: ${_order?.clientName ?? ''}\nProtocolo: #${widget.orderId}';
+
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        subject: 'Relatorio do servico #${widget.orderId}',
+        text: msg,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Row(children: [Icon(Icons.check_circle, color: Colors.white), SizedBox(width: 8), Text('Relatorio pronto para enviar!')]),
+          backgroundColor: Colors.green,
+        ));
       }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro: $e')));
