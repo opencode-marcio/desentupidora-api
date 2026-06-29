@@ -20,7 +20,7 @@ class _TimeoutClient extends http.BaseClient {
 class ApiService {
   static String _baseUrl = ApiConfig.defaultBaseUrl;
   static String get baseUrl => _baseUrl;
-  static const Duration _timeout = Duration(seconds: 8);
+  static const Duration _timeout = Duration(seconds: 30);
   static http.Client _client = _TimeoutClient(http.Client(), _timeout);
 
   static void setClient(http.Client client) {
