@@ -22,10 +22,12 @@ class _WhatsAppQRScreenState extends State<WhatsAppQRScreen> {
   }
 
   Timer? _pollTimer;
+  Timer? _timeoutTimer;
 
   @override
   void dispose() {
     _pollTimer?.cancel();
+    _timeoutTimer?.cancel();
     super.dispose();
   }
 
@@ -51,6 +53,7 @@ class _WhatsAppQRScreenState extends State<WhatsAppQRScreen> {
       } else {
         await ApiService.startWhatsApp();
         await Future.delayed(const Duration(seconds: 2));
+        _startTimeout();
         _pollQR();
       }
     } catch (e) {
@@ -62,12 +65,24 @@ class _WhatsAppQRScreenState extends State<WhatsAppQRScreen> {
     }
   }
 
+  void _startTimeout() {
+    _timeoutTimer = Timer(const Duration(seconds: 30), () {
+      if (!mounted) return;
+      _pollTimer?.cancel();
+      setState(() {
+        _loading = false;
+        _status = 'timeout';
+      });
+    });
+  }
+
   void _pollQR() {
     _pollTimer?.cancel();
     _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
       try {
         if (_status == 'connected') {
           _pollTimer?.cancel();
+          _timeoutTimer?.cancel();
           return;
         }
 
@@ -76,6 +91,7 @@ class _WhatsAppQRScreenState extends State<WhatsAppQRScreen> {
 
         if (result['qr'] != null) {
           _pollTimer?.cancel();
+          _timeoutTimer?.cancel();
           setState(() {
             _qr = result['qr'];
             _status = 'awaiting_scan';
@@ -84,6 +100,7 @@ class _WhatsAppQRScreenState extends State<WhatsAppQRScreen> {
           _pollConnection();
         } else if (result['status'] == 'connected') {
           _pollTimer?.cancel();
+          _timeoutTimer?.cancel();
           setState(() {
             _qr = null;
             _status = 'connected';
@@ -101,6 +118,7 @@ class _WhatsAppQRScreenState extends State<WhatsAppQRScreen> {
         if (!mounted) return;
         if (status['status'] == 'connected') {
           _pollTimer?.cancel();
+          _timeoutTimer?.cancel();
           setState(() {
             _status = 'connected';
             _qr = null;
@@ -174,6 +192,7 @@ class _WhatsAppQRScreenState extends State<WhatsAppQRScreen> {
                           _status == 'connecting' ? 'Conectando...' :
                           _status == 'disconnected' ? 'Desconectado' :
                           _status == 'erro' ? 'Erro de conexao' :
+                          _status == 'timeout' ? 'Servidor incompativel' :
                           'Verificando...',
                           style: TextStyle(
                             fontSize: 20,
@@ -187,7 +206,9 @@ class _WhatsAppQRScreenState extends State<WhatsAppQRScreen> {
                               ? 'WhatsApp conectado e pronto para enviar relatorios'
                               : _status == 'awaiting_scan'
                                   ? 'Abra o WhatsApp no seu celular, va em Menu > WhatsApp Web e escaneie o QR code abaixo'
-                                  : 'Inicie a conexao com o WhatsApp para enviar relatorios automaticamente',
+                                  : _status == 'timeout'
+                                      ? 'O servidor Railway nao suporta conexao WhatsApp direta. Use um webhook externo ou atualize para o plano Hobby.'
+                                      : 'Inicie a conexao com o WhatsApp para enviar relatorios automaticamente',
                           textAlign: TextAlign.center,
                           style: TextStyle(color: Colors.grey[600]),
                         ),
@@ -244,7 +265,7 @@ class _WhatsAppQRScreenState extends State<WhatsAppQRScreen> {
                       style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.red)),
                     ),
                   ),
-                if (_status == 'erro' || _status == 'disconnected')
+                if (_status == 'erro' || _status == 'disconnected' || _status == 'timeout')
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(

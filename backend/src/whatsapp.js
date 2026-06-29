@@ -92,6 +92,10 @@ async function start() {
         }
       }
     }
+
+    if (lastDisconnect?.error) {
+      console.error('WhatsApp connection error:', lastDisconnect.error.message || lastDisconnect.error);
+    }
   });
 
   sock.ev.on('creds.update', saveCreds);
